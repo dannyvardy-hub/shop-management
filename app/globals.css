@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #faf8f3;
+  --ink: #22201b;
+  --ledger: #2c4159;
+  --sage: #6b7a5e;
+  --brick: #a8452e;
+  --line: #ddd6c7;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ledger: var(--ledger);
+  --color-sage: var(--sage);
+  --color-brick: var(--brick);
+  --color-line: var(--line);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-plex-mono);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* Receipt-style card: dashed perforation + serrated bottom edge */
+.receipt-card {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.receipt-tear {
+  border-top: 1px dashed var(--line);
+  margin: 0.75rem 0;
+}
+
+.serrated-bottom {
+  position: relative;
+  padding-bottom: 14px;
+}
+
+.serrated-bottom::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--paper) 0,
+    var(--paper) 5px,
+    transparent 5px,
+    transparent 10px
+  );
+}
