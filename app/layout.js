@@ -21,8 +21,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata = {
-  title: "Order Book",
-  description: "Record orders and keep a running list of products.",
+  title: "FAITH SHOP MANAGEMENT",
+  description: "Record orders, keeping track of debtors and transactions ",
 };
 
 export default function RootLayout({ children }) {
