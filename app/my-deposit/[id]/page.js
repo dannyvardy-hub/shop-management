@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { watchDepositAgents, watchMyDeposit, addMyDeposit, deleteMyDeposit } from "@/lib/data";
+import { watchDepositAgents, watchMyDeposit, addMyDeposit } from "@/lib/data";
+import MoneyInput from "@/components/MoneyInput";
+import { fmtMoney } from "@/lib/format";
 
 function fmtDate(ts) {
   if (!ts?.toDate) return "";
@@ -19,7 +21,7 @@ export default function AgentDetailPage() {
   const router = useRouter();
   const [agents, setAgents] = useState([]);
   const [entries, setEntries] = useState([]);
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(0);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -30,12 +32,11 @@ export default function AgentDetailPage() {
   const balance = useMemo(() => entries.reduce((sum, e) => sum + e.amount, 0), [entries]);
 
   async function topUp() {
-    const value = Number(amount);
-    if (!value || !agent) return;
+    if (!amount || !agent) return;
     setSaving(true);
     try {
-      await addMyDeposit({ agentId: id, agentName: agent.name, amount: Math.abs(value), note });
-      setAmount("");
+      await addMyDeposit({ agentId: id, agentName: agent.name, amount: Math.abs(amount), note });
+      setAmount(0);
       setNote("");
     } finally {
       setSaving(false);
@@ -57,7 +58,7 @@ export default function AgentDetailPage() {
         <div className="flex items-baseline justify-between mb-4">
           <span className="text-xs font-mono uppercase tracking-wide text-ink/50">Balance</span>
           <span className={`font-mono text-2xl ${balance < 0 ? "text-brick" : "text-sage"}`}>
-            UGX {balance.toFixed(2)}
+            UGX {fmtMoney(balance)}
           </span>
         </div>
 
@@ -66,12 +67,9 @@ export default function AgentDetailPage() {
             <label className="block text-xs font-mono uppercase tracking-wide text-ink/50 mb-1">
               Top up amount
             </label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
+            <MoneyInput
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={setAmount}
               className="w-full border border-line rounded-md px-3 py-2 bg-paper font-mono focus:outline-none focus:ring-2 focus:ring-ledger/40"
             />
           </div>
@@ -104,21 +102,11 @@ export default function AgentDetailPage() {
             <div>
               <span className={e.amount < 0 ? "text-brick" : "text-sage"}>
                 {e.amount < 0 ? "−" : "+"}
-                {Math.abs(e.amount).toFixed(2)}
+                {fmtMoney(Math.abs(e.amount))}
               </span>
               {e.note && <span className="text-ink/50 ml-2">{e.note}</span>}
               <span className="text-ink/30 ml-2 font-mono text-xs">{fmtDate(e.createdAt)}</span>
             </div>
-            {!e.orderId && (
-              <button
-                onClick={() => {
-                  if (confirm("Delete this entry?")) deleteMyDeposit(e.id);
-                }}
-                className="text-brick/70 hover:text-brick text-xs"
-              >
-                delete
-              </button>
-            )}
           </div>
         ))}
       </div>

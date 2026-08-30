@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Wallet } from "lucide-react";
 import {
   watchDepositAgents,
   addDepositAgent,
@@ -10,13 +11,15 @@ import {
   addMyDeposit,
 } from "@/lib/data";
 import AgentAutocomplete from "@/components/AgentAutocomplete";
+import MoneyInput from "@/components/MoneyInput";
+import { fmtMoney } from "@/lib/format";
 
 export default function MyDepositPage() {
   const [agents, setAgents] = useState([]);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [picked, setPicked] = useState(null);
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(0);
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -37,14 +40,16 @@ export default function MyDepositPage() {
     return map;
   }, [entries]);
 
+  // Total is defined strictly as the sum of the balances actually shown
+  // below, per existing agent — not raw ledger entries (which could include
+  // leftovers from a deleted agent).
   const totalBalance = useMemo(
-    () => entries.reduce((sum, e) => sum + e.amount, 0),
-    [entries]
+    () => agents.reduce((sum, a) => sum + (balances[a.id] || 0), 0),
+    [agents, balances]
   );
 
   async function topUp() {
-    const value = Number(amount);
-    if (!value || !picked?.name) return;
+    if (!amount || !picked?.name) return;
     setSaving(true);
     try {
       let agentId = picked.id;
@@ -53,9 +58,9 @@ export default function MyDepositPage() {
         const ref = await addDepositAgent({ name: agentName });
         agentId = ref.id;
       }
-      await addMyDeposit({ agentId, agentName, amount: Math.abs(value), note });
+      await addMyDeposit({ agentId, agentName, amount: Math.abs(amount), note });
       setPicked(null);
-      setAmount("");
+      setAmount(0);
       setNote("");
     } finally {
       setSaving(false);
@@ -64,7 +69,10 @@ export default function MyDepositPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl mb-1">My Deposit</h1>
+      <div className="flex items-center gap-2 mb-1">
+        <Wallet size={22} className="text-ledger" strokeWidth={1.75} />
+        <h1 className="font-display text-3xl">My Deposit</h1>
+      </div>
       <p className="text-ink/50 text-sm mb-6">
         Money you've deposited with agents to pay for orders. Approving an
         order, and later confirming its tax, draws down whichever agent you
@@ -76,7 +84,7 @@ export default function MyDepositPage() {
           Total across all agents
         </span>
         <span className={`font-mono text-2xl ${totalBalance < 0 ? "text-brick" : "text-sage"}`}>
-          UGX {totalBalance.toFixed(2)}
+          UGX {fmtMoney(totalBalance)}
         </span>
       </div>
 
@@ -89,14 +97,12 @@ export default function MyDepositPage() {
             <label className="block text-xs text-ink/50 mb-1">Agent</label>
             <AgentAutocomplete agents={agents} value={picked} onChange={setPicked} />
           </div>
-          <div className="w-32">
+          <div className="w-36">
             <label className="block text-xs text-ink/50 mb-1">Amount (UGX)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
+            <MoneyInput
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={setAmount}
+              placeholder="0.00"
               className="w-full border border-line rounded-md px-3 py-2 bg-paper font-mono focus:outline-none focus:ring-2 focus:ring-ledger/40"
             />
           </div>
@@ -133,21 +139,15 @@ export default function MyDepositPage() {
                 {a.name}
               </Link>
               <span className={`font-mono mr-4 ${bal < 0 ? "text-brick" : "text-sage"}`}>
-                {bal.toFixed(2)}
+                {fmtMoney(bal)}
               </span>
-              <button
-                onClick={() => {
-                  if (confirm(`Remove ${a.name}? This won't delete their deposit history.`))
-                    deleteDepositAgent(a.id);
-                }}
-                className="text-brick/70 hover:text-brick text-xs"
-              >
-                delete
-              </button>
             </div>
           );
         })}
       </div>
+      <p className="text-xs text-ink/30 mt-2">
+        To remove an agent, use Settings.
+      </p>
     </div>
   );
 }

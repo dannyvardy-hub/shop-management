@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { watchDebtors, addDebtor, deleteDebtor, watchCredits, watchDebtorPayments } from "@/lib/data";
+import { Users } from "lucide-react";
+import { watchDebtors, addDebtor, watchCredits, watchDebtorPayments } from "@/lib/data";
+import { fmtMoney } from "@/lib/format";
 
 export default function DebtorsPage() {
   const [debtors, setDebtors] = useState([]);
@@ -39,7 +41,10 @@ export default function DebtorsPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl mb-1">Debtors</h1>
+      <div className="flex items-center gap-2 mb-1">
+        <Users size={22} className="text-ledger" strokeWidth={1.75} />
+        <h1 className="font-display text-3xl">Debtors</h1>
+      </div>
       <p className="text-ink/50 text-sm mb-6">
         People taking goods on credit. Balances in red are what they still owe you.
       </p>
@@ -80,21 +85,13 @@ export default function DebtorsPage() {
                 {d.notes && <span className="text-ink/40 ml-2">{d.notes}</span>}
               </Link>
               <span className={`font-mono mr-4 ${bal > 0 ? "text-brick" : "text-ink/40"}`}>
-                {bal.toFixed(2)}
+                {fmtMoney(bal)}
               </span>
-              <button
-                onClick={() => {
-                  if (confirm(`Remove ${d.name}? This won't delete their credit history.`))
-                    deleteDebtor(d.id);
-                }}
-                className="text-brick/70 hover:text-brick text-xs"
-              >
-                delete
-              </button>
             </div>
           );
         })}
       </div>
+      <p className="text-xs text-ink/30 mt-2">To remove a debtor, use Settings.</p>
     </div>
   );
 }

@@ -29,6 +29,18 @@ you across devices, and the whole thing deploys for free on Vercel.
   or per dozen — whichever fits), and "Create credit" adds that total to
   what they owe (shown in red). Record payments to bring their balance back
   down.
+- **Settings** — the one place to delete products, debtors, agents, or
+  orders. Every delete asks you to confirm first.
+
+A few smaller things throughout:
+- Placing an order, approving it, marking it received, confirming receipt,
+  confirming tax, and creating a credit all show a confirmation dialog
+  before anything is saved.
+- Every money amount is shown with comma-separated thousands (e.g.
+  120,000.00), and typing into a price/amount field formats live as you go.
+- Order PDFs are landscape and include, per item, the KSh price per piece
+  and per dozen, and the UGX price per piece both exactly and rounded up to
+  the next whole shilling.
 
 It's locked behind a simple sign-in (one account, created by you) so your
 data isn't public.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useRef, useEffect } from "react";
+import { fmtMoney } from "@/lib/format";
 
 export default function ProductAutocomplete({ products, onPick, placeholder }) {
   const [text, setText] = useState("");
@@ -72,7 +73,7 @@ export default function ProductAutocomplete({ products, onPick, placeholder }) {
               <span>{p.name}</span>
               {p.price != null && (
                 <span className="font-mono text-ink/50">
-                  {p.price.toFixed(2)}
+                  {fmtMoney(p.price)}
                 </span>
               )}
             </button>

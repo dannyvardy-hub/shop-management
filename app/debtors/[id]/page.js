@@ -14,6 +14,9 @@ import {
   addProduct,
 } from "@/lib/data";
 import ProductAutocomplete from "@/components/ProductAutocomplete";
+import MoneyInput from "@/components/MoneyInput";
+import { fmtMoney } from "@/lib/format";
+import { useConfirm } from "@/lib/useConfirm";
 
 function fmtDate(ts) {
   if (!ts?.toDate) return "";
@@ -38,9 +41,10 @@ export default function DebtorDetailPage() {
   const [cartItems, setCartItems] = useState([]);
   const [savingCredit, setSavingCredit] = useState(false);
 
-  const [payAmount, setPayAmount] = useState("");
+  const [payAmount, setPayAmount] = useState(0);
   const [payNote, setPayNote] = useState("");
   const [savingPayment, setSavingPayment] = useState(false);
+  const { confirm, dialog } = useConfirm();
 
   useEffect(() => watchDebtors(setDebtors), []);
   useEffect(() => watchCredits(id, setCredits), [id]);
@@ -92,6 +96,10 @@ export default function DebtorDetailPage() {
 
   async function handleCreateCredit() {
     if (cartItems.length === 0) return;
+    const ok = await confirm(
+      `Create this credit for ${debtor?.name}?\n${cartItems.length} item(s) · Total ${fmtMoney(cartTotal)}\n\nThis adds to what they owe you.`
+    );
+    if (!ok) return;
     setSavingCredit(true);
     try {
       await addCredit({ debtorId: id, items: cartItems });
@@ -102,12 +110,11 @@ export default function DebtorDetailPage() {
   }
 
   async function handleRecordPayment() {
-    const value = Number(payAmount);
-    if (!value) return;
+    if (!payAmount) return;
     setSavingPayment(true);
     try {
-      await addDebtorPayment({ debtorId: id, amount: value, note: payNote });
-      setPayAmount("");
+      await addDebtorPayment({ debtorId: id, amount: payAmount, note: payNote });
+      setPayAmount(0);
       setPayNote("");
     } finally {
       setSavingPayment(false);
@@ -120,6 +127,7 @@ export default function DebtorDetailPage() {
 
   return (
     <div>
+      {dialog}
       <button onClick={() => router.push("/debtors")} className="text-xs text-ink/40 hover:text-ink mb-4">
         ← Back to Debtors
       </button>
@@ -131,7 +139,7 @@ export default function DebtorDetailPage() {
           Balance owed
         </span>
         <span className={`font-mono text-3xl ${balance > 0 ? "text-brick" : "text-ink/40"}`}>
-          {balance.toFixed(2)}
+          {fmtMoney(balance)}
         </span>
       </div>
 
@@ -172,16 +180,13 @@ export default function DebtorDetailPage() {
                   <option value="half-dozen">per half-dozen</option>
                   <option value="dozen">per dozen</option>
                 </select>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                <MoneyInput
                   value={item.price}
-                  onChange={(e) => updateCartItem(item.productId, "price", Number(e.target.value))}
+                  onChange={(v) => updateCartItem(item.productId, "price", v)}
                   className="w-24 border border-line rounded-md px-2 py-1 font-mono bg-paper text-right"
                 />
                 <span className="w-24 text-right font-mono text-ink/70">
-                  {((Number(item.qty) || 0) * (Number(item.price) || 0)).toFixed(2)}
+                  {fmtMoney((Number(item.qty) || 0) * (Number(item.price) || 0))}
                 </span>
                 <button
                   type="button"
@@ -198,7 +203,7 @@ export default function DebtorDetailPage() {
               <span className="text-xs font-mono uppercase tracking-wide text-ink/50">
                 Credit total
               </span>
-              <span className="font-mono text-xl text-brick">{cartTotal.toFixed(2)}</span>
+              <span className="font-mono text-xl text-brick">{fmtMoney(cartTotal)}</span>
             </div>
             <button
               type="button"
@@ -220,12 +225,9 @@ export default function DebtorDetailPage() {
         <div className="flex flex-wrap gap-2 items-end">
           <div className="w-32">
             <label className="block text-xs text-ink/50 mb-1">Amount</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
+            <MoneyInput
               value={payAmount}
-              onChange={(e) => setPayAmount(e.target.value)}
+              onChange={setPayAmount}
               className="w-full border border-line rounded-md px-3 py-2 bg-paper font-mono focus:outline-none focus:ring-2 focus:ring-ledger/40"
             />
           </div>
@@ -256,7 +258,7 @@ export default function DebtorDetailPage() {
             <div className="flex items-center justify-between mb-1">
               <span className="text-ink/30 font-mono text-xs">{fmtDate(c.createdAt)}</span>
               <div className="flex items-center gap-3">
-                <span className="text-brick font-mono">+{c.total.toFixed(2)}</span>
+                <span className="text-brick font-mono">+{fmtMoney(c.total)}</span>
                 <button
                   onClick={() => {
                     if (confirm("Delete this credit entry?")) deleteCredit(c.id);
@@ -274,7 +276,7 @@ export default function DebtorDetailPage() {
                     {item.qty} × {item.name} ({UNIT_LABEL[item.unit] || item.unit})
                   </span>
                   <span className="font-mono">
-                    {((Number(item.qty) || 0) * (Number(item.price) || 0)).toFixed(2)}
+                    {fmtMoney((Number(item.qty) || 0) * (Number(item.price) || 0))}
                   </span>
                 </div>
               ))}
@@ -289,7 +291,7 @@ export default function DebtorDetailPage() {
         {payments.map((p) => (
           <div key={p.id} className="flex items-center justify-between px-4 py-3 text-sm">
             <div>
-              <span className="text-sage font-mono">−{p.amount.toFixed(2)}</span>
+              <span className="text-sage font-mono">−{fmtMoney(p.amount)}</span>
               {p.note && <span className="text-ink/50 ml-2">{p.note}</span>}
               <span className="text-ink/30 ml-2 font-mono text-xs">{fmtDate(p.createdAt)}</span>
             </div>

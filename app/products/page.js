@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { watchProducts, addProduct, updateProduct, deleteProduct } from "@/lib/data";
+import { Package } from "lucide-react";
+import { watchProducts, addProduct, updateProduct } from "@/lib/data";
+import MoneyInput from "@/components/MoneyInput";
+import { fmtMoney } from "@/lib/format";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
+  const [price, setPrice] = useState(0);
 
   useEffect(() => {
     const unsub = watchProducts((data) => {
@@ -20,14 +23,17 @@ export default function ProductsPage() {
   async function handleAdd(e) {
     e.preventDefault();
     if (!name.trim()) return;
-    await addProduct({ name, price: price === "" ? null : Number(price) });
+    await addProduct({ name, price: price || null });
     setName("");
-    setPrice("");
+    setPrice(0);
   }
 
   return (
     <div>
-      <h1 className="font-display text-3xl mb-1">Products</h1>
+      <div className="flex items-center gap-2 mb-1">
+        <Package size={22} className="text-ledger" strokeWidth={1.75} />
+        <h1 className="font-display text-3xl">Products</h1>
+      </div>
       <p className="text-ink/50 text-sm mb-6">
         Items you've used in orders end up here automatically. Manage them, or add one ahead of time.
       </p>
@@ -39,12 +45,9 @@ export default function ProductsPage() {
           placeholder="Item name"
           className="flex-1 border border-line rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-ledger/40"
         />
-        <input
+        <MoneyInput
           value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          type="number"
-          step="0.01"
-          min="0"
+          onChange={setPrice}
           placeholder="Default price"
           className="w-36 border border-line rounded-md px-3 py-2 bg-white font-mono focus:outline-none focus:ring-2 focus:ring-ledger/40"
         />
@@ -68,6 +71,7 @@ export default function ProductsPage() {
           <ProductRow key={p.id} product={p} />
         ))}
       </div>
+      <p className="text-xs text-ink/30 mt-2">To remove a product, use Settings.</p>
     </div>
   );
 }
@@ -75,12 +79,12 @@ export default function ProductsPage() {
 function ProductRow({ product }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(product.name);
-  const [price, setPrice] = useState(product.price ?? "");
+  const [price, setPrice] = useState(product.price ?? 0);
 
   async function save() {
     await updateProduct(product.id, {
       name: name.trim(),
-      price: price === "" ? null : Number(price),
+      price: price || null,
     });
     setEditing(false);
   }
@@ -93,11 +97,9 @@ function ProductRow({ product }) {
           onChange={(e) => setName(e.target.value)}
           className="flex-1 border border-line rounded-md px-2 py-1 bg-paper"
         />
-        <input
+        <MoneyInput
           value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          type="number"
-          step="0.01"
+          onChange={setPrice}
           className="w-28 border border-line rounded-md px-2 py-1 font-mono bg-paper"
         />
         <button onClick={save} className="text-sage text-sm px-2">
@@ -118,22 +120,13 @@ function ProductRow({ product }) {
       <span>{product.name}</span>
       <div className="flex items-center gap-4">
         <span className="font-mono text-ink/50">
-          {product.price != null ? product.price.toFixed(2) : "—"}
+          {product.price != null ? fmtMoney(product.price) : "—"}
         </span>
         <button
           onClick={() => setEditing(true)}
           className="text-ledger/70 hover:text-ledger text-xs"
         >
           edit
-        </button>
-        <button
-          onClick={() => {
-            if (confirm(`Remove "${product.name}" from products?`))
-              deleteProduct(product.id);
-          }}
-          className="text-brick/70 hover:text-brick text-xs"
-        >
-          delete
         </button>
       </div>
     </div>

@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { FileText, Download } from "lucide-react";
 import {
   watchOrders,
   approveOrder,
   markReceived,
   confirmReceived,
   completeOrderWithTax,
-  deleteOrder,
   piecesFor,
   watchDepositAgents,
   watchMyDeposit,
@@ -16,6 +16,9 @@ import {
 } from "@/lib/data";
 import { downloadOrderPdf } from "@/lib/pdf";
 import AgentAutocomplete from "@/components/AgentAutocomplete";
+import MoneyInput from "@/components/MoneyInput";
+import { fmtMoney, fmtInt } from "@/lib/format";
+import { useConfirm } from "@/lib/useConfirm";
 
 function fmtDate(ts) {
   if (!ts?.toDate) return "—";
@@ -34,11 +37,12 @@ export default function OrderDetailPage() {
   const router = useRouter();
   const [orders, setOrders] = useState([]);
   const [busy, setBusy] = useState(false);
-  const [taxPerDozen, setTaxPerDozen] = useState("");
+  const [taxPerDozen, setTaxPerDozen] = useState(0);
   const [agents, setAgents] = useState([]);
   const [depositEntries, setDepositEntries] = useState([]);
   const [approveAgent, setApproveAgent] = useState(null);
   const [taxAgent, setTaxAgent] = useState(null);
+  const { confirm, dialog } = useConfirm();
 
   useEffect(() => watchOrders(setOrders), []);
   useEffect(() => watchDepositAgents(setAgents), []);
@@ -48,10 +52,6 @@ export default function OrderDetailPage() {
   for (const e of depositEntries) {
     agentBalances[e.agentId] = (agentBalances[e.agentId] || 0) + e.amount;
   }
-  const agentsWithBalance = agents.map((a) => ({
-    ...a,
-    balanceLabel: `${a.name} (UGX ${(agentBalances[a.id] || 0).toFixed(2)})`,
-  }));
   const order = orders.find((o) => o.id === id);
 
   if (orders.length && !order) {
@@ -70,8 +70,49 @@ export default function OrderDetailPage() {
     }
   }
 
+  async function ensureAgent(picked) {
+    if (picked.id) return picked;
+    const ref = await addDepositAgent({ name: picked.name });
+    return { id: ref.id, name: picked.name };
+  }
+
+  async function handleApprove() {
+    const ok = await confirm(
+      `Approve this order?\nUGX ${fmtMoney(order.subtotalUgx)} will be deducted from ${approveAgent.name}'s deposit.`
+    );
+    if (!ok) return;
+    run(async () => {
+      const agent = await ensureAgent(approveAgent);
+      await approveOrder(order, agent);
+    });
+  }
+
+  async function handleMarkReceived() {
+    const ok = await confirm("Mark this order as received? Today's date will be recorded.");
+    if (!ok) return;
+    run(() => markReceived(order.id));
+  }
+
+  async function handleConfirmReceived() {
+    const ok = await confirm("Confirm this order was received? This locks in a second confirmation date.");
+    if (!ok) return;
+    run(() => confirmReceived(order.id));
+  }
+
+  async function handleCompleteTax() {
+    const ok = await confirm(
+      `Confirm tax and complete this order?\nUGX ${fmtMoney(taxPerDozen)}/dozen will be deducted from ${taxAgent.name}'s deposit, and the order will be marked completed.`
+    );
+    if (!ok) return;
+    run(async () => {
+      const agent = await ensureAgent(taxAgent);
+      await completeOrderWithTax(order, taxPerDozen, agent);
+    });
+  }
+
   return (
     <div>
+      {dialog}
       <button
         onClick={() => router.push("/orders")}
         className="text-xs text-ink/40 hover:text-ink mb-4"
@@ -80,14 +121,17 @@ export default function OrderDetailPage() {
       </button>
 
       <div className="flex items-start justify-between mb-1">
-        <h1 className="font-display text-3xl">
-          {order.label || `Order ${order.id.slice(0, 6)}`}
-        </h1>
+        <div className="flex items-center gap-2">
+          <FileText size={20} className="text-ledger" strokeWidth={1.75} />
+          <h1 className="font-display text-3xl">
+            {order.label || `Order ${order.id.slice(0, 6)}`}
+          </h1>
+        </div>
         <button
           onClick={() => downloadOrderPdf(order)}
-          className="text-xs border border-line rounded-md px-3 py-1.5 hover:bg-white transition"
+          className="flex items-center gap-1.5 text-xs border border-line rounded-md px-3 py-1.5 hover:bg-white transition"
         >
-          Download PDF
+          <Download size={14} /> Download PDF
         </button>
       </div>
       <p className="text-ink/50 text-sm mb-6">
@@ -128,11 +172,11 @@ export default function OrderDetailPage() {
                 <span className="w-20 text-right font-mono text-ink/60">
                   {item.qty} {item.unit}
                 </span>
-                <span className="w-16 text-right font-mono text-ink/50">{pieces}</span>
+                <span className="w-16 text-right font-mono text-ink/50">{fmtInt(pieces)}</span>
                 <span className="w-24 text-right font-mono text-ink/50">
-                  {Number(item.pricePerPiece).toFixed(2)}
+                  {fmtMoney(item.pricePerPiece)}
                 </span>
-                <span className="w-24 text-right font-mono">{lineTotal.toFixed(2)}</span>
+                <span className="w-24 text-right font-mono">{fmtMoney(lineTotal)}</span>
               </div>
             );
           })}
@@ -143,29 +187,29 @@ export default function OrderDetailPage() {
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-ink/50">Exchange rate</span>
-            <span className="font-mono">UGX {Number(order.exchangeRate).toFixed(2)} / KSh</span>
+            <span className="font-mono">UGX {fmtMoney(order.exchangeRate)} / KSh</span>
           </div>
           <div className="flex justify-between">
             <span className="text-ink/50">Subtotal (KSh)</span>
-            <span className="font-mono">{Number(order.subtotalKsh).toFixed(2)}</span>
+            <span className="font-mono">{fmtMoney(order.subtotalKsh)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-ink/50">Subtotal (UGX)</span>
-            <span className="font-mono">{Number(order.subtotalUgx).toFixed(2)}</span>
+            <span className="font-mono">{fmtMoney(order.subtotalUgx)}</span>
           </div>
           {order.status === "completed" && (
             <>
               <div className="flex justify-between">
                 <span className="text-ink/50">Tax per dozen</span>
-                <span className="font-mono">UGX {Number(order.taxPerDozen).toFixed(2)}</span>
+                <span className="font-mono">UGX {fmtMoney(order.taxPerDozen)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink/50">Total dozens (tax basis)</span>
-                <span className="font-mono">{Number(order.totalDozens).toFixed(2)}</span>
+                <span className="font-mono">{fmtMoney(order.totalDozens)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-ink/50">Tax total</span>
-                <span className="font-mono">{Number(order.taxTotalUgx).toFixed(2)}</span>
+                <span className="font-mono">{fmtMoney(order.taxTotalUgx)}</span>
               </div>
             </>
           )}
@@ -179,7 +223,7 @@ export default function OrderDetailPage() {
           </span>
           <span className="font-mono text-2xl">
             UGX{" "}
-            {(order.status === "completed" ? order.grandTotalUgx : order.subtotalUgx).toFixed(2)}
+            {fmtMoney(order.status === "completed" ? order.grandTotalUgx : order.subtotalUgx)}
           </span>
         </div>
 
@@ -197,11 +241,11 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Actions per status */}
-      <div className="receipt-card p-5 mb-6">
+      <div className="receipt-card p-5">
         {order.status === "pending" && (
           <div>
             <p className="text-sm text-ink/60 mb-3">
-              Approving deducts <span className="font-mono">UGX {order.subtotalUgx.toFixed(2)}</span>{" "}
+              Approving deducts <span className="font-mono">UGX {fmtMoney(order.subtotalUgx)}</span>{" "}
               from the agent you pick below.
             </p>
             <div className="flex flex-wrap items-end gap-3">
@@ -212,22 +256,13 @@ export default function OrderDetailPage() {
                 <AgentAutocomplete agents={agents} value={approveAgent} onChange={setApproveAgent} />
                 {approveAgent?.id && (
                   <p className="text-xs text-ink/40 mt-1 font-mono">
-                    Balance: {(agentBalances[approveAgent.id] || 0).toFixed(2)}
+                    Balance: {fmtMoney(agentBalances[approveAgent.id] || 0)}
                   </p>
                 )}
               </div>
               <button
                 disabled={busy || !approveAgent?.name}
-                onClick={() =>
-                  run(async () => {
-                    let agent = approveAgent;
-                    if (!agent.id) {
-                      const ref = await addDepositAgent({ name: agent.name });
-                      agent = { id: ref.id, name: agent.name };
-                    }
-                    await approveOrder(order, agent);
-                  })
-                }
+                onClick={handleApprove}
                 className="bg-ledger text-white rounded-md px-5 py-2.5 font-medium hover:bg-ledger/90 transition disabled:opacity-50"
               >
                 Approve order
@@ -241,7 +276,7 @@ export default function OrderDetailPage() {
             <p className="text-sm text-ink/60 mb-3">Mark this order received once it arrives.</p>
             <button
               disabled={busy}
-              onClick={() => run(() => markReceived(order.id))}
+              onClick={handleMarkReceived}
               className="bg-ledger text-white rounded-md px-5 py-2.5 font-medium hover:bg-ledger/90 transition disabled:opacity-50"
             >
               Mark received
@@ -254,7 +289,7 @@ export default function OrderDetailPage() {
             <p className="text-sm text-ink/60 mb-3">Confirm the received order to proceed to tax.</p>
             <button
               disabled={busy}
-              onClick={() => run(() => confirmReceived(order.id))}
+              onClick={handleConfirmReceived}
               className="bg-ledger text-white rounded-md px-5 py-2.5 font-medium hover:bg-ledger/90 transition disabled:opacity-50"
             >
               Confirm received
@@ -272,12 +307,9 @@ export default function OrderDetailPage() {
                 <label className="block text-xs font-mono uppercase tracking-wide text-ink/50 mb-1">
                   Tax per dozen (UGX)
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                <MoneyInput
                   value={taxPerDozen}
-                  onChange={(e) => setTaxPerDozen(e.target.value)}
+                  onChange={setTaxPerDozen}
                   className="w-40 border border-line rounded-md px-3 py-2 bg-paper font-mono focus:outline-none focus:ring-2 focus:ring-ledger/40"
                 />
               </div>
@@ -288,22 +320,13 @@ export default function OrderDetailPage() {
                 <AgentAutocomplete agents={agents} value={taxAgent} onChange={setTaxAgent} />
                 {taxAgent?.id && (
                   <p className="text-xs text-ink/40 mt-1 font-mono">
-                    Balance: {(agentBalances[taxAgent.id] || 0).toFixed(2)}
+                    Balance: {fmtMoney(agentBalances[taxAgent.id] || 0)}
                   </p>
                 )}
               </div>
               <button
                 disabled={busy || !taxPerDozen || !taxAgent?.name}
-                onClick={() =>
-                  run(async () => {
-                    let agent = taxAgent;
-                    if (!agent.id) {
-                      const ref = await addDepositAgent({ name: agent.name });
-                      agent = { id: ref.id, name: agent.name };
-                    }
-                    await completeOrderWithTax(order, taxPerDozen, agent);
-                  })
-                }
+                onClick={handleCompleteTax}
                 className="bg-ledger text-white rounded-md px-5 py-2.5 font-medium hover:bg-ledger/90 transition disabled:opacity-50"
               >
                 Confirm tax & complete order
@@ -316,16 +339,7 @@ export default function OrderDetailPage() {
           <p className="text-sm text-sage">This order is fully completed.</p>
         )}
       </div>
-
-      <button
-        onClick={() => {
-          if (confirm("Delete this order? Any deposit deductions tied to it will be reversed."))
-            deleteOrder(order.id).then(() => router.push("/orders"));
-        }}
-        className="text-xs text-brick/70 hover:text-brick"
-      >
-        Delete order
-      </button>
+      <p className="text-xs text-ink/30 mt-3">To delete this order, use Settings.</p>
     </div>
   );
 }

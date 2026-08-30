@@ -1,17 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ClipboardList } from "lucide-react";
 import { watchProducts, addProduct, addOrder, piecesFor } from "@/lib/data";
 import ProductAutocomplete from "@/components/ProductAutocomplete";
+import MoneyInput from "@/components/MoneyInput";
+import { fmtMoney, fmtInt } from "@/lib/format";
+import { useConfirm } from "@/lib/useConfirm";
 
 export default function NewOrderPage() {
   const [products, setProducts] = useState([]);
   const [items, setItems] = useState([]);
   const [label, setLabel] = useState("");
   const [notes, setNotes] = useState("");
-  const [exchangeRate, setExchangeRate] = useState("");
+  const [exchangeRate, setExchangeRate] = useState(0);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
+  const { confirm, dialog } = useConfirm();
 
   useEffect(() => watchProducts(setProducts), []);
 
@@ -19,7 +24,6 @@ export default function NewOrderPage() {
     let productId = product.id;
     let price = product.price;
 
-    // Brand new item the user typed — remember it for next time.
     if (!productId) {
       const ref = await addProduct({ name: product.name, price: null, unit: "" });
       productId = ref.id;
@@ -68,13 +72,17 @@ export default function NewOrderPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     if (items.length === 0 || !rate) return;
+    const ok = await confirm(
+      `Place this order?\n${items.length} item(s) · KSh ${fmtMoney(subtotalKsh)} · UGX ${fmtMoney(subtotalUgx)}\n\nYou'll approve it separately from the Orders tab to draw on My Deposit.`
+    );
+    if (!ok) return;
     setSaving(true);
     try {
       await addOrder({ label, notes, items, exchangeRate: rate });
       setItems([]);
       setLabel("");
       setNotes("");
-      setExchangeRate("");
+      setExchangeRate(0);
       setSavedMsg("Order placed — approve it from the Orders tab to draw on My Deposit.");
       setTimeout(() => setSavedMsg(""), 4000);
     } finally {
@@ -84,10 +92,14 @@ export default function NewOrderPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl mb-1">New order</h1>
+      {dialog}
+      <div className="flex items-center gap-2 mb-1">
+        <ClipboardList size={22} className="text-ledger" strokeWidth={1.75} />
+        <h1 className="font-display text-3xl">New order</h1>
+      </div>
       <p className="text-ink/50 text-sm mb-6">
-        Add items by price per piece and quantity in dozens or bundles (1 bundle = {" "}
-        {"10"} pieces). Tax comes later, once the order arrives.
+        Add items by price per piece and quantity in dozens or bundles (1 bundle = 10 pieces).
+        Tax comes later, once the order arrives.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -125,8 +137,8 @@ export default function NewOrderPage() {
                 <span className="w-14 text-right">Qty</span>
                 <span className="w-24">Unit</span>
                 <span className="w-16 text-right">Pieces</span>
-                <span className="w-24 text-right">KSh/piece</span>
-                <span className="w-24 text-right">Line KSh</span>
+                <span className="w-28 text-right">KSh/piece</span>
+                <span className="w-28 text-right">Line KSh</span>
                 <span className="w-12" />
               </div>
               {items.map((item) => {
@@ -154,20 +166,15 @@ export default function NewOrderPage() {
                       <option value="bundle">bundle (10)</option>
                     </select>
                     <span className="w-16 text-right font-mono text-ink/50 text-xs">
-                      {pieces}
+                      {fmtInt(pieces)}
                     </span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
+                    <MoneyInput
                       value={item.pricePerPiece}
-                      onChange={(e) =>
-                        updateItem(item.productId, "pricePerPiece", Number(e.target.value))
-                      }
-                      className="w-24 border border-line rounded-md px-2 py-1 font-mono bg-paper text-right"
+                      onChange={(v) => updateItem(item.productId, "pricePerPiece", v)}
+                      className="w-28 border border-line rounded-md px-2 py-1 font-mono bg-paper text-right"
                     />
-                    <span className="w-24 text-right font-mono text-ink/70">
-                      {lineTotal.toFixed(2)}
+                    <span className="w-28 text-right font-mono text-ink/70">
+                      {fmtMoney(lineTotal)}
                     </span>
                     <button
                       type="button"
@@ -189,22 +196,19 @@ export default function NewOrderPage() {
               <label className="block text-xs font-mono uppercase tracking-wide text-ink/50 mb-1">
                 Exchange rate — UGX per 1 KSh
               </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
+              <MoneyInput
                 value={exchangeRate}
-                onChange={(e) => setExchangeRate(e.target.value)}
+                onChange={setExchangeRate}
                 placeholder="e.g. 27.50"
                 className="w-full border border-line rounded-md px-3 py-2 bg-paper font-mono focus:outline-none focus:ring-2 focus:ring-ledger/40"
               />
             </div>
             <div className="text-right">
               <p className="text-xs font-mono uppercase tracking-wide text-ink/50">
-                Subtotal (KSh {subtotalKsh.toFixed(2)})
+                Subtotal (KSh {fmtMoney(subtotalKsh)})
               </p>
               <p className="font-mono text-2xl">
-                UGX {subtotalUgx.toFixed(2)}
+                UGX {fmtMoney(subtotalUgx)}
               </p>
               <p className="text-xs text-ink/40">Tax not included yet</p>
             </div>

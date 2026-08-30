@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ListOrdered } from "lucide-react";
 import { watchOrders } from "@/lib/data";
+import { fmtMoney } from "@/lib/format";
 
 const STATUS_STYLE = {
   pending: "text-ink/50",
@@ -31,7 +33,10 @@ export default function OrdersPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl mb-1">Orders</h1>
+      <div className="flex items-center gap-2 mb-1">
+        <ListOrdered size={22} className="text-ledger" strokeWidth={1.75} />
+        <h1 className="font-display text-3xl">Orders</h1>
+      </div>
       <p className="text-ink/50 text-sm mb-6">
         Every order, newest first. Tap one to approve, mark received, or add tax.
       </p>
@@ -68,10 +73,9 @@ export default function OrdersPage() {
               </p>
               <p className="font-mono">
                 UGX{" "}
-                {(order.status === "completed"
-                  ? order.grandTotalUgx
-                  : order.subtotalUgx
-                ).toFixed(2)}
+                {fmtMoney(
+                  order.status === "completed" ? order.grandTotalUgx : order.subtotalUgx
+                )}
               </p>
             </div>
           </Link>
