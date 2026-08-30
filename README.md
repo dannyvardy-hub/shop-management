@@ -5,31 +5,30 @@ remembered, so next time you just start typing and pick it from the list
 instead of retyping it. Data is stored in the cloud (Firebase) so it follows
 you across devices, and the whole thing deploys for free on Vercel.
 
-Built for tracking stock ordered from Kenya, priced in Kenyan Shillings and
-paid for in Ugandan Shillings once converted — with tax settled after the
-order arrives.
-
 - **New order** — add items by price per piece (KSh) and quantity in dozens
   or bundles (1 bundle = 10 pieces). Enter today's KSh→UGX exchange rate to
   see the subtotal in both currencies (tax isn't included yet).
 - **Orders** — every order, its status, and a running total. Tap into one to
   walk it through its lifecycle:
-  1. **Approve** — deducts the UGX subtotal from My Deposit.
+  1. **Approve** — pick which agent to deduct the UGX subtotal from.
   2. **Mark received** — records the date it arrived.
   3. **Confirm received** — records a second confirmation date.
-  4. **Enter tax** — type the tax rate per dozen; bundle quantities convert
-     to dozens automatically. This deducts the tax from My Deposit and marks
-     the order fully completed with a grand total.
+  4. **Enter tax** — type the tax rate per dozen and pick which agent pays
+     it; bundle quantities convert to dozens automatically. This marks the
+     order fully completed with a grand total.
   Each order can be downloaded as a PDF summary, or viewed on the page
   itself, at any stage.
 - **Products** — the running list of items, built automatically as you use
   them. Edit names/prices or delete ones you don't need.
-- **My Deposit** — your own float for paying these orders. Top it up
-  whenever; approving an order and later confirming its tax both draw it
-  down automatically. Deleting an order reverses any deductions it made.
-- **People** — a separate, unrelated feature for people you lend items to.
-  Each person has their own deposit balance you can add to or draw down —
-  this is independent of My Deposit and doesn't affect orders.
+- **My Deposit** — money you've deposited with agents (people who hold funds
+  for you) to pay for orders. Each agent has their own balance; top one up,
+  and pick which agent to draw from whenever you approve an order or settle
+  its tax. Deleting an order reverses whatever it drew down.
+- **Debtors** — people taking goods on credit, unrelated to orders or My
+  Deposit. Add the items they're taking (priced per piece, per half-dozen,
+  or per dozen — whichever fits), and "Create credit" adds that total to
+  what they owe (shown in red). Record payments to bring their balance back
+  down.
 
 It's locked behind a simple sign-in (one account, created by you) so your
 data isn't public.

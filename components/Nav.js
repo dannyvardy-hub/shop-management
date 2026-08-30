@@ -9,7 +9,7 @@ const tabs = [
   { href: "/orders", label: "Orders" },
   { href: "/products", label: "Products" },
   { href: "/my-deposit", label: "My Deposit" },
-  { href: "/people", label: "People" },
+  { href: "/debtors", label: "Debtors" },
 ];
 
 export default function Nav() {

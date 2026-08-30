@@ -10,8 +10,12 @@ import {
   completeOrderWithTax,
   deleteOrder,
   piecesFor,
+  watchDepositAgents,
+  watchMyDeposit,
+  addDepositAgent,
 } from "@/lib/data";
 import { downloadOrderPdf } from "@/lib/pdf";
+import AgentAutocomplete from "@/components/AgentAutocomplete";
 
 function fmtDate(ts) {
   if (!ts?.toDate) return "—";
@@ -31,8 +35,23 @@ export default function OrderDetailPage() {
   const [orders, setOrders] = useState([]);
   const [busy, setBusy] = useState(false);
   const [taxPerDozen, setTaxPerDozen] = useState("");
+  const [agents, setAgents] = useState([]);
+  const [depositEntries, setDepositEntries] = useState([]);
+  const [approveAgent, setApproveAgent] = useState(null);
+  const [taxAgent, setTaxAgent] = useState(null);
 
   useEffect(() => watchOrders(setOrders), []);
+  useEffect(() => watchDepositAgents(setAgents), []);
+  useEffect(() => watchMyDeposit(null, setDepositEntries), []);
+
+  const agentBalances = {};
+  for (const e of depositEntries) {
+    agentBalances[e.agentId] = (agentBalances[e.agentId] || 0) + e.amount;
+  }
+  const agentsWithBalance = agents.map((a) => ({
+    ...a,
+    balanceLabel: `${a.name} (UGX ${(agentBalances[a.id] || 0).toFixed(2)})`,
+  }));
   const order = orders.find((o) => o.id === id);
 
   if (orders.length && !order) {
@@ -170,10 +189,10 @@ export default function OrderDetailPage() {
       <div className="receipt-card p-5 mb-6 space-y-3 text-sm">
         <p className="text-xs font-mono uppercase tracking-wide text-ink/50">Dates</p>
         <div className="grid sm:grid-cols-2 gap-2">
-          <p>Approved: <span className="font-mono">{fmtDate(order.approvedAt)}</span></p>
+          <p>Approved: <span className="font-mono">{fmtDate(order.approvedAt)}</span>{order.approvedByAgentName && <span className="text-ink/40"> — {order.approvedByAgentName}</span>}</p>
           <p>Received: <span className="font-mono">{fmtDate(order.receivedAt)}</span></p>
           <p>Confirmed: <span className="font-mono">{fmtDate(order.confirmedAt)}</span></p>
-          <p>Completed: <span className="font-mono">{fmtDate(order.completedAt)}</span></p>
+          <p>Completed: <span className="font-mono">{fmtDate(order.completedAt)}</span>{order.taxAgentName && <span className="text-ink/40"> — tax via {order.taxAgentName}</span>}</p>
         </div>
       </div>
 
@@ -183,15 +202,37 @@ export default function OrderDetailPage() {
           <div>
             <p className="text-sm text-ink/60 mb-3">
               Approving deducts <span className="font-mono">UGX {order.subtotalUgx.toFixed(2)}</span>{" "}
-              from My Deposit.
+              from the agent you pick below.
             </p>
-            <button
-              disabled={busy}
-              onClick={() => run(() => approveOrder(order))}
-              className="bg-ledger text-white rounded-md px-5 py-2.5 font-medium hover:bg-ledger/90 transition disabled:opacity-50"
-            >
-              Approve order
-            </button>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-56">
+                <label className="block text-xs font-mono uppercase tracking-wide text-ink/50 mb-1">
+                  Deduct from agent
+                </label>
+                <AgentAutocomplete agents={agents} value={approveAgent} onChange={setApproveAgent} />
+                {approveAgent?.id && (
+                  <p className="text-xs text-ink/40 mt-1 font-mono">
+                    Balance: {(agentBalances[approveAgent.id] || 0).toFixed(2)}
+                  </p>
+                )}
+              </div>
+              <button
+                disabled={busy || !approveAgent?.name}
+                onClick={() =>
+                  run(async () => {
+                    let agent = approveAgent;
+                    if (!agent.id) {
+                      const ref = await addDepositAgent({ name: agent.name });
+                      agent = { id: ref.id, name: agent.name };
+                    }
+                    await approveOrder(order, agent);
+                  })
+                }
+                className="bg-ledger text-white rounded-md px-5 py-2.5 font-medium hover:bg-ledger/90 transition disabled:opacity-50"
+              >
+                Approve order
+              </button>
+            </div>
           </div>
         )}
 
@@ -226,7 +267,7 @@ export default function OrderDetailPage() {
             <p className="text-sm text-ink/60 mb-3">
               Enter the tax rate per dozen. Bundle quantities are converted to dozens automatically.
             </p>
-            <div className="flex items-end gap-3">
+            <div className="flex flex-wrap items-end gap-3">
               <div>
                 <label className="block text-xs font-mono uppercase tracking-wide text-ink/50 mb-1">
                   Tax per dozen (UGX)
@@ -240,9 +281,29 @@ export default function OrderDetailPage() {
                   className="w-40 border border-line rounded-md px-3 py-2 bg-paper font-mono focus:outline-none focus:ring-2 focus:ring-ledger/40"
                 />
               </div>
+              <div className="w-56">
+                <label className="block text-xs font-mono uppercase tracking-wide text-ink/50 mb-1">
+                  Deduct tax from agent
+                </label>
+                <AgentAutocomplete agents={agents} value={taxAgent} onChange={setTaxAgent} />
+                {taxAgent?.id && (
+                  <p className="text-xs text-ink/40 mt-1 font-mono">
+                    Balance: {(agentBalances[taxAgent.id] || 0).toFixed(2)}
+                  </p>
+                )}
+              </div>
               <button
-                disabled={busy || !taxPerDozen}
-                onClick={() => run(() => completeOrderWithTax(order, taxPerDozen))}
+                disabled={busy || !taxPerDozen || !taxAgent?.name}
+                onClick={() =>
+                  run(async () => {
+                    let agent = taxAgent;
+                    if (!agent.id) {
+                      const ref = await addDepositAgent({ name: agent.name });
+                      agent = { id: ref.id, name: agent.name };
+                    }
+                    await completeOrderWithTax(order, taxPerDozen, agent);
+                  })
+                }
                 className="bg-ledger text-white rounded-md px-5 py-2.5 font-medium hover:bg-ledger/90 transition disabled:opacity-50"
               >
                 Confirm tax & complete order
