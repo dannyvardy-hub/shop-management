@@ -17,7 +17,10 @@ you across devices, and the whole thing deploys for free on Vercel.
      it; bundle quantities convert to dozens automatically. This marks the
      order fully completed with a grand total.
   Each order can be downloaded as a PDF summary, or viewed on the page
-  itself, at any stage.
+  itself, at any stage. The PDF's per-piece and per-dozen prices are shown
+  only in UGX, and only once the order is completed — they're worked
+  backwards from the grand total (subtotal + tax), not just a currency
+  conversion.
 - **Products** — the running list of items, built automatically as you use
   them. Edit names/prices or delete ones you don't need.
 - **My Deposit** — money you've deposited with agents (people who hold funds
@@ -28,7 +31,9 @@ you across devices, and the whole thing deploys for free on Vercel.
   Deposit. Add the items they're taking (priced per piece, per half-dozen,
   or per dozen — whichever fits), and "Create credit" adds that total to
   what they owe (shown in red). Record payments to bring their balance back
-  down.
+  down. A "Download PDF" button gives a full summary — itemized credits and
+  payments, with payments shown as negative amounts since they reduce the
+  debt.
 - **Settings** — the one place to delete products, debtors, agents, or
   orders. Every delete asks you to confirm first.
 

@@ -33,7 +33,7 @@ export default function Nav() {
         <div className="flex items-center gap-1.5">
           <BookOpenText size={16} className="text-ledger/70" strokeWidth={1.75} />
           <p className="font-mono text-[11px] tracking-[0.3em] uppercase text-ledger/60">
-            FAITH SHOP MANAGEMENT SYSTEM
+            Faith Shop Management System
           </p>
         </div>
         <nav className="flex items-center gap-1 flex-wrap">

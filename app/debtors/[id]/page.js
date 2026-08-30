@@ -17,6 +17,8 @@ import ProductAutocomplete from "@/components/ProductAutocomplete";
 import MoneyInput from "@/components/MoneyInput";
 import { fmtMoney } from "@/lib/format";
 import { useConfirm } from "@/lib/useConfirm";
+import { downloadDebtorPdf } from "@/lib/pdf";
+import { Download } from "lucide-react";
 
 function fmtDate(ts) {
   if (!ts?.toDate) return "";
@@ -131,7 +133,17 @@ export default function DebtorDetailPage() {
       <button onClick={() => router.push("/debtors")} className="text-xs text-ink/40 hover:text-ink mb-4">
         ← Back to Debtors
       </button>
-      <h1 className="font-display text-3xl mb-1">{debtor?.name || "…"}</h1>
+      <div className="flex items-start justify-between mb-1">
+        <h1 className="font-display text-3xl">{debtor?.name || "…"}</h1>
+        {debtor && (
+          <button
+            onClick={() => downloadDebtorPdf(debtor, credits, payments)}
+            className="flex items-center gap-1.5 text-xs border border-line rounded-md px-3 py-1.5 hover:bg-white transition"
+          >
+            <Download size={14} /> Download PDF
+          </button>
+        )}
+      </div>
       {debtor?.notes && <p className="text-ink/50 text-sm mb-4">{debtor.notes}</p>}
 
       <div className="receipt-card p-5 mb-6 flex items-baseline justify-between">
