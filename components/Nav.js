@@ -8,6 +8,7 @@ const tabs = [
   { href: "/", label: "New order" },
   { href: "/orders", label: "Orders" },
   { href: "/products", label: "Products" },
+  { href: "/my-deposit", label: "My Deposit" },
   { href: "/people", label: "People" },
 ];
 
@@ -17,13 +18,13 @@ export default function Nav() {
 
   return (
     <header className="border-b border-line bg-white">
-      <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div className="max-w-3xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <p className="font-mono text-[11px] tracking-[0.3em] uppercase text-ledger/60">
             Order Book
           </p>
         </div>
-        <nav className="flex items-center gap-1">
+        <nav className="flex items-center gap-1 flex-wrap">
           {tabs.map((t) => {
             const active =
               t.href === "/" ? pathname === "/" : pathname.startsWith(t.href);

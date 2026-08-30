@@ -1,18 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { watchOrders, updateOrder, deleteOrder } from "@/lib/data";
+import Link from "next/link";
+import { watchOrders } from "@/lib/data";
 
-const STATUSES = ["open", "fulfilled", "cancelled"];
+const STATUS_STYLE = {
+  pending: "text-ink/50",
+  approved: "text-ledger",
+  received: "text-sage",
+  confirmed: "text-sage",
+  completed: "text-sage",
+};
 
 function fmtDate(ts) {
   if (!ts?.toDate) return "";
-  return ts.toDate().toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return ts.toDate().toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export default function OrdersPage() {
@@ -30,85 +32,49 @@ export default function OrdersPage() {
   return (
     <div>
       <h1 className="font-display text-3xl mb-1">Orders</h1>
-      <p className="text-ink/50 text-sm mb-6">Every order you've recorded, newest first.</p>
+      <p className="text-ink/50 text-sm mb-6">
+        Every order, newest first. Tap one to approve, mark received, or add tax.
+      </p>
 
       {loading && <p className="text-sm text-ink/40">Loading…</p>}
       {!loading && orders.length === 0 && (
         <p className="text-sm text-ink/40">
-          Nothing here yet — record your first order from the New order tab.
+          Nothing here yet — place your first order from the New order tab.
         </p>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {orders.map((order) => (
-          <div key={order.id} className="receipt-card p-5">
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div>
-                <p className="font-medium">
-                  {order.customerName || "Unnamed order"}
-                </p>
-                <p className="text-xs text-ink/40 font-mono">
-                  {fmtDate(order.createdAt)}
-                  {order.deductedFromDeposit && (
-                    <span className="text-ledger ml-2">· deducted from deposit</span>
-                  )}
-                </p>
-              </div>
-              <select
-                value={order.status}
-                onChange={(e) => updateOrder(order.id, { status: e.target.value })}
-                className={`text-xs font-mono uppercase tracking-wide border border-line rounded-md px-2 py-1 bg-paper ${
-                  order.status === "fulfilled"
-                    ? "text-sage"
-                    : order.status === "cancelled"
-                    ? "text-brick"
-                    : "text-ledger"
+          <Link
+            key={order.id}
+            href={`/orders/${order.id}`}
+            className="receipt-card p-4 flex items-center justify-between hover:shadow-sm transition block"
+          >
+            <div>
+              <p className="font-medium">
+                {order.label || `Order ${order.id.slice(0, 6)}`}
+              </p>
+              <p className="text-xs text-ink/40 font-mono">
+                {order.items?.length || 0} item(s) · {fmtDate(order.createdAt)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p
+                className={`text-xs font-mono uppercase tracking-wide ${
+                  STATUS_STYLE[order.status] || "text-ink/50"
                 }`}
               >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+                {order.status}
+              </p>
+              <p className="font-mono">
+                UGX{" "}
+                {(order.status === "completed"
+                  ? order.grandTotalUgx
+                  : order.subtotalUgx
+                ).toFixed(2)}
+              </p>
             </div>
-
-            <div className="receipt-tear" />
-
-            <div className="space-y-1 text-sm">
-              {order.items?.map((item, idx) => (
-                <div key={idx} className="flex justify-between">
-                  <span>
-                    {item.qty} {item.unit ? `${item.unit}${item.qty === 1 ? "" : "s"}` : "×"}{" "}
-                    {item.name}
-                  </span>
-                  <span className="font-mono text-ink/70">
-                    {(item.qty * (Number(item.price) || 0)).toFixed(2)}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {order.notes && (
-              <p className="text-sm text-ink/50 italic mt-2">{order.notes}</p>
-            )}
-
-            <div className="receipt-tear" />
-
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => {
-                  if (confirm("Delete this order?")) deleteOrder(order.id);
-                }}
-                className="text-xs text-brick/70 hover:text-brick"
-              >
-                Delete
-              </button>
-              <span className="font-mono text-lg">
-                {(order.total || 0).toFixed(2)}
-              </span>
-            </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>
